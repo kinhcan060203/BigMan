@@ -2,13 +2,18 @@ FROM python:3.10.15-slim-bullseye
 
 WORKDIR /app
 
-
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 -y
 
-COPY ./deployment/ai_services/requirements.txt .
-RUN pip install -r requirements.txt --timeout=1000 --no-cache-dir
-RUN pip uninstall -y opencv-python-headless opencv-python
-RUN pip install opencv-python
 
-COPY ./src/ai_services ./src/ai_services
-COPY .env ./.env
+RUN pip install uv
+ENV UV_HTTP_TIMEOUT=1000
+ENV UV_LINK_MODE=copy
+
+COPY ./deployment/ai_services/requirements.txt .
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install -r requirements.txt --system 
+
+RUN pip uninstall -y opencv-python-headless opencv-python
+RUN uv pip install opencv-python
+

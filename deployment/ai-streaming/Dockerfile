@@ -13,6 +13,3 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install -r requirements.txt --system 
 RUN pip uninstall -y opencv-python-headless opencv-python
 RUN uv pip install opencv-python --system
-
-COPY ai-streaming/requirements-2.txt /app/
-RUN uv pip install -r requirements-2.txt --system 

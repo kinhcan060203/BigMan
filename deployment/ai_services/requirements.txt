@@ -2,7 +2,7 @@ confluent-kafka
 rich
 supervision==0.22.0
 tqdm
-python-dotenv
+python-dotenv==1.0.1
 numpy<2.0.0
 scikit-learn
 minio

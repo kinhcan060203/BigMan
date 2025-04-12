@@ -77,6 +77,7 @@ services:
 
     restart: unless-stopped
     volumes:
+        - ../src/ai_services/:/app/src/ai_services/
         - ../.env:/app/.env
         - "/etc/timezone:/etc/timezone:ro"
         - "/etc/localtime:/etc/localtime:ro"
@@ -142,6 +143,7 @@ services:
         options:
             max-size: "50m"
     volumes:
+        - ../src/api/:/app/src/api/
         - "/etc/timezone:/etc/timezone:ro"
         - "/etc/localtime:/etc/localtime:ro"
         - ../.env:/app/.env

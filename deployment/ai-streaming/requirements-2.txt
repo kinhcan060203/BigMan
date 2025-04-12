@@ -1,0 +1,2 @@
+msgpack
+confluent_kafka==2.5.3

@@ -1,0 +1,210 @@
+name: nano
+services:
+  mongo:
+    image: mongo
+    container_name: nano-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: anh123
+      MONGO_INITDB_DATABASE: nano
+    ports:
+      - 27010:27017
+    volumes:
+      - ./mongo/mongo-drop.js:/docker-entrypoint-initdb.d/mongo-drop.js:ro
+      - ./mongo/mongo-up.js:/docker-entrypoint-initdb.d/mongo-up.js:ro
+  mongo-express:
+    container_name: nano-mongo-express
+    image: mongo-express
+    restart: always
+    ports:
+      - 8005:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: anh123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:anh123@mongo:27017/
+      ME_CONFIG_BASICAUTH: false
+  redis:
+    image: redis:latest
+    restart: always
+    container_name: nano-redis
+    ports:
+        - "${REDIS_PORT:-6379}:6379"
+    volumes:
+        - ./redis/data:/root/redis
+        - /etc/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+        - REDIS_PORT=${REDIS_PORT:-6379}
+        - REDIS_DATABASES=0
+    networks:
+        - nano
+
+  ai-streaming:
+    image: ai-streaming:v1.0.0
+    build:
+      context: .
+      dockerfile: ai-streaming/Dockerfile
+    container_name: ai-streaming
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+    restart: always
+    volumes:
+      - ../src/ai-streaming/:/app/src/ai-streaming/
+      - ../.env:/app/.env
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    command: python src/ai-streaming/sub.py
+    tty: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+    networks:
+      - nano
+  ai-services:
+    command: ["python", "src/ai_services/main.py"]
+    image: nano-ai-services:v1.0.0
+    build:
+        context: ..
+        dockerfile: deployment/ai_services/Dockerfile
+    container_name: ai-services
+    working_dir: /app
+
+    restart: unless-stopped
+    volumes:
+        - ../.env:/app/.env
+        - "/etc/timezone:/etc/timezone:ro"
+        - "/etc/localtime:/etc/localtime:ro"
+    networks:
+        - nano
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "50m"
+    tty: true
+    deploy:
+        resources:
+            reservations:
+                devices:
+                    - driver: nvidia
+                      count: all
+                      capabilities: [gpu]
+
+
+  reid:
+    command: ["python", "src/reid/main.py"]
+    image: nano-reid:v1.0.0
+    build:
+        context: ..
+        dockerfile: deployment/reid/Dockerfile
+    container_name: nano-reid
+    working_dir: /app
+
+    restart: unless-stopped
+    volumes:
+        - ../.env:/app/.env
+        - "/etc/timezone:/etc/timezone:ro"
+        - "/etc/localtime:/etc/localtime:ro"
+    networks:
+        - nano
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "50m"
+    tty: true
+    deploy:
+        resources:
+            reservations:
+                devices:
+                    - driver: nvidia
+                      count: all
+                      capabilities: [gpu]
+  api:
+    container_name: nano-api
+    image: api:v1.0.0
+    working_dir: /app
+    build:
+        context: ..
+        dockerfile: deployment/api/Dockerfile
+    ports:
+        - "${API_PORT:-8001}:${API_PORT:-8001}"
+    restart: unless-stopped
+
+    command: python src/api/app.py
+    tty: true
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "50m"
+    volumes:
+        - "/etc/timezone:/etc/timezone:ro"
+        - "/etc/localtime:/etc/localtime:ro"
+        - ../.env:/app/.env
+    networks:
+        - nano
+    depends_on:
+        - mongo
+
+  minio:
+      container_name: nano-minio
+      ports:
+          - "${MINIO_PORT:-9000}:9000"
+          - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      image: quay.io/minio/minio:latest
+      command: server /data --console-address ":9001"
+      environment:
+          - MINIO_ROOT_USER=${MINIO_USERNAME:-meme}
+          - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-meme@123}
+
+      restart: always
+      user: root:root
+      volumes:
+          - ./minio/data:/data:rw,z
+      networks:
+          - nano
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    hostname: kafka
+    container_name: nano-kafka
+    ports:
+        - "9089:9092"
+        - "9105:9101"
+    environment:
+        KAFKA_BROKER_ID: 1
+        KAFKA_NODE_ID: 1
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+        KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://100.112.243.28:9089"
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+        KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+        KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+        KAFKA_JMX_PORT: 9101
+        KAFKA_JMX_HOSTNAME: localhost
+        KAFKA_PROCESS_ROLES: "broker,controller"
+        KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+        KAFKA_LISTENERS: "PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+        KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+        KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+        KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+        # Replace CLUSTER_ID with a unique base64 UUID using "bin/kafka-storage.sh random-uuid"
+        # See https://docs.confluent.io/kafka/operations-tools/kafka-tools.html#kafka-storage-sh
+        CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+        KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 1000
+        KAFKA_LOG_RETENTION_MINUTES: 10
+    restart: unless-stopped
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "50m"
+    networks:
+        - nano
+      
+networks:
+  nano:
+    name: nano
+    driver: bridge

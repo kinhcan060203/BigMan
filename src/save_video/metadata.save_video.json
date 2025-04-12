@@ -1,0 +1,63 @@
+[{
+  "_id": {
+    "$oid": "660cd8e232ceef2771aadf6b"
+  },
+  "streams": [
+    {
+      "source": {
+        "topic": "crowd_detection.1F_LOBBY_P8-P9_CAM_07",
+        "position": "1F_LOBBY_P8-P9_CAM_07",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "crowd_detection.TANG_01-CAM-02",
+        "position": "TANG_01-CAM-02",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "crowd_detection.TANG_01-CAM-03",
+        "position": "TANG_01-CAM-03",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "crowd_detection.TANG_01-CAM-05",
+        "position": "TANG_01-CAM-05",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "illegal_intrusion.2F_ST_A_CAM_01",
+        "position": "2F_ST_A_CAM_01",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "illegal_intrusion.2F_ST_B_CAM_02",
+        "position": "2F_ST_B_CAM_02",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "illegal_intrusion.4F_ST_A_CAM_01",
+        "position": "4F_ST_A_CAM_01",
+        "fps": 10
+      }
+    },
+    {
+      "source": {
+        "topic": "smoke_fire_detection.TDC_TOWER",
+        "position": "TDC_TOWER",
+        "fps": 30
+      }
+    }
+  ]
+}]
